@@ -1,15 +1,12 @@
 {
-  "name": "gsm-whatsapp-bot",
+  "name": "gsm-bot",
   "version": "1.0.0",
-  "description": "Bot propio de WhatsApp para GSM Mantenimiento",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "^6.6.0",
-    "cors": "^2.8.5",
-    "express": "^4.19.2",
+    "@whiskeysockets/baileys": "^6.7.10",
     "qrcode-terminal": "^0.12.0"
   }
 }
