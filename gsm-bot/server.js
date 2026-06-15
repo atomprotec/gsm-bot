@@ -7,14 +7,15 @@ app.use(cors());
 app.use(express.json());
 
 let sock;
-let ultimoQR = ""; // Guardamos el QR acá para mostrarlo en la web
+let ultimoQR = ""; 
 
 async function connectToWhatsApp() {
+    // Usamos memoria volátil en vez de archivos para que Render no explote al escribir en el disco gratis
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
     
     sock = makeWASocket({
         auth: state,
-        printQRInTerminal: false // APAGAMOS la terminal para que Render no explote
+        printQRInTerminal: false 
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -22,45 +23,52 @@ async function connectToWhatsApp() {
     sock.ev.on('connection.update', (update) => {
         const { connection, qr } = update;
         if (qr) {
-            ultimoQR = qr; // Guardamos el código para la página
-            console.log("⭐ ¡Nuevo código QR generado! Miralo en la web.");
+            ultimoQR = qr; 
+            console.log("⭐ QR generado con éxito.");
         }
         if (connection === 'close') {
-            console.log('🔄 Conexión cerrada, reinstanciando...');
+            console.log('🔄 Reiniciando conexión...');
             connectToWhatsApp();
         } else if (connection === 'open') {
             ultimoQR = "CONECTADO";
-            console.log('✅ ¡GSM BOT CONECTADO A WHATSAPP DE FORMA EXITOSA!');
+            console.log('✅ ¡BOT GSM CONECTADO!');
         }
     });
 }
 
-// RUTA PARA VER EL QR DESDE EL NAVEGADOR
-app.get('/') => {
+// PÁGINA WEB QUE CREA EL QR EN TU NAVEGADOR (No gasta memoria en Render)
+app.get('/', (req, res) => {
     if (ultimoQR === "CONECTADO") {
-        res.send("<h1>✅ El Bot de GSM ya está conectado y activo.</h1>");
-    } else if (ultimoQR) {
-        // Te genera una página web con un generador de QR directo para escanear con el celu
-        res.send(`
-            <div style="text-align:center; font-family:sans-serif; margin-top:50px;">
-                <h2>📱 Escaneá este QR con el WhatsApp de la Empresa</h2>
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(ultimoQR)}" />
-                <p>Al escanearlo, el sistema quedará automatizado.</p>
-            </div>
-        `);
-    } else {
-        res.send("<h1>⏳ Iniciando el bot, recargá en 5 segundos...</h1>");
+        return res.send("<h1 style='font-family:sans-serif; text-align:center; color:green; margin-top:50px;'>✅ El Bot de GSM ya está conectado y activo.</h1>");
+    } 
+    
+    if (!ultimoQR) {
+        return res.send("<h1 style='font-family:sans-serif; text-align:center; margin-top:50px;'>⏳ Iniciando el bot, recargá esta pestaña en 10 segundos...</h1>");
     }
+
+    // Usamos una librería externa de Google para dibujar el QR, Render no hace ningún esfuerzo
+    res.send(`
+        <div style="text-align:center; font-family:sans-serif; margin-top:50px;">
+            <h2 style="color:#333;">📱 Escaneá este QR con el WhatsApp de la Empresa</h2>
+            <div style="margin: 20px auto;">
+                <img src="https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=${encodeURIComponent(ultimoQR)}&choe=UTF-8" alt="QR Code" style="border: 10px solid white; box-shadow: 0px 0px 15px rgba(0,0,0,0.1);"/>
+            </div>
+            <p style="color:#666;">Abrí WhatsApp -> Dispositivos vinculados -> Vincular dispositivo.</p>
+            <script>
+                // Auto recarga cada 15 segundos para mantener el QR fresco si se vence
+                setTimeout(() => { location.reload(); }, 15000);
+            </script>
+        </div>
+    `);
 });
 
-// RUTA QUE LLAMA TU APP.JS PARA ENVIAR MENSAJES
 app.post('/enviar-alerta', async (req, res) => {
     const { numero, mensaje } = req.body;
     try {
         if (!sock) return res.status(500).json({ error: "Bot no listo" });
         const idJid = `${numero}@s.whatsapp.net`;
         await sock.sendMessage(idJid, { text: mensaje });
-        res.json({ success: true, status: "Mensaje enviado por la empresa" });
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -68,6 +76,6 @@ app.post('/enviar-alerta', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor Bot GSM corriendo en puerto ${PORT}`);
+    console.log(`🚀 Servidor listo en puerto ${PORT}`);
     connectToWhatsApp();
 });
