@@ -1,17 +1,21 @@
 const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
-const express = require('express'); // NUEVO
-const app = express(); // NUEVO
+const express = require('express');
+const app = express();
 
-// NUEVO: Servidor Express para mantener vivo el bot en Render
+// Usamos el puerto que asigne Render o el 3000 por defecto
+const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot GSM Activo'));
-app.listen(process.env.PORT || 3000, () => console.log('Servidor web iniciado'));
+app.listen(PORT, () => console.log(`Servidor iniciado en puerto ${PORT}`));
+
+// Definimos el número del admin usando la variable de entorno
+const ADMIN_NUMBER = process.env.ADMIN_NUMBER; 
 
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
     const sock = makeWASocket({
         auth: state,
-        printQRInTerminal: true // Lo ponemos en true para obtener el QR al subirlo
+        printQRInTerminal: true
     });
 
     sock.ev.on('connection.update', (update) => {
@@ -25,6 +29,13 @@ async function startBot() {
     });
 
     sock.ev.on('creds.update', saveCreds);
+
+    // FUNCIÓN PARA AVISAR AL ADMIN (la vas a llamar cuando recibas el formulario)
+    async function avisarAdmin(mensaje) {
+        if (ADMIN_NUMBER) {
+            await sock.sendMessage(ADMIN_NUMBER + '@s.whatsapp.net', { text: mensaje });
+        }
+    }
 }
 
 startBot();
