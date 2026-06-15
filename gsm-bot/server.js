@@ -36,7 +36,7 @@ async function connectToWhatsApp() {
 }
 
 // RUTA PARA VER EL QR DESDE EL NAVEGADOR
-app.get('/', (req, res) => {
+app.get('/') => {
     if (ultimoQR === "CONECTADO") {
         res.send("<h1>✅ El Bot de GSM ya está conectado y activo.</h1>");
     } else if (ultimoQR) {
