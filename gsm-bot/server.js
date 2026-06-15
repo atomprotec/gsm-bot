@@ -1,34 +1,40 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, makeCacheableSignalKeyStore } = require('@whiskeysockets/baileys');
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 let sock;
-let ultimoQR = ""; 
+let ultimoQR = "";
 
 async function connectToWhatsApp() {
-    // 1. Inicializamos el estado vacío si no existe
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+    // Seguridad: Asegurar que la carpeta existe para evitar el error 'undefined'
+    const authFolder = 'auth_info_baileys';
+    if (!fs.existsSync(authFolder)){
+        fs.mkdirSync(authFolder);
+    }
+
+    const { state, saveCreds } = await useMultiFileAuthState(authFolder);
     
-    // 2. Pasamos el objeto de autenticación correctamente
     sock = makeWASocket({
-        auth: state,
+        auth: {
+            creds: state.creds,
+            keys: makeCacheableSignalKeyStore(state.keys, console),
+        },
         printQRInTerminal: false,
-        browser: ["MundoGamerBot", "Chrome", "1.0.0"]
+        browser: ["GSM-Bot", "Chrome", "1.0"]
     });
 
     sock.ev.on('creds.update', saveCreds);
     
     sock.ev.on('connection.update', (update) => {
         const { connection, qr } = update;
-        if (qr) {
-            ultimoQR = qr;
-        }
+        if (qr) ultimoQR = qr;
         if (connection === 'close') {
-            // Reintento con retraso para no saturar el servidor
+            console.log('🔄 Conexión cerrada, reconectando...');
             setTimeout(connectToWhatsApp, 5000);
         } else if (connection === 'open') {
             ultimoQR = "CONECTADO";
