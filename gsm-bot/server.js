@@ -10,23 +10,29 @@ let sock;
 let ultimoQR = ""; 
 
 async function connectToWhatsApp() {
-    // Si da error de disco, intentamos conectar sin persistencia de estado para que no falle al arrancar
+    // 1. Inicializamos el estado vacío si no existe
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+    
+    // 2. Pasamos el objeto de autenticación correctamente
     sock = makeWASocket({
-        printQRInTerminal: false
+        auth: state,
+        printQRInTerminal: false,
+        browser: ["MundoGamerBot", "Chrome", "1.0.0"]
     });
 
+    sock.ev.on('creds.update', saveCreds);
+    
     sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
+        const { connection, qr } = update;
         if (qr) {
             ultimoQR = qr;
         }
         if (connection === 'close') {
-            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) {
-                setTimeout(connectToWhatsApp, 5000); // Reintento automático
-            }
+            // Reintento con retraso para no saturar el servidor
+            setTimeout(connectToWhatsApp, 5000);
         } else if (connection === 'open') {
             ultimoQR = "CONECTADO";
+            console.log('✅ ¡CONECTADO!');
         }
     });
 }
