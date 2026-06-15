@@ -1,6 +1,6 @@
 const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
-const express = require('express');
+const express = require('/opt/render/project/src/node_modules/express');
 const app = express();
 
 // Usamos el puerto que asigne Render o el 3000 por defecto
