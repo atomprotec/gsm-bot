@@ -19,14 +19,15 @@ async function connectToWhatsApp() {
 
     const { state, saveCreds } = await useMultiFileAuthState(authFolder);
     
-    sock = makeWASocket({
-        auth: {
-            creds: state.creds,
-            keys: makeCacheableSignalKeyStore(state.keys, console),
-        },
-        printQRInTerminal: false,
-        browser: ["GSM-Bot", "Chrome", "1.0"]
-    });
+sock = makeWASocket({
+    auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(state.keys, console),
+    },
+    // CAMBIAMOS ESTO:
+    printQRInTerminal: true, 
+    browser: ["GSM-Bot", "Chrome", "1.0"]
+});
 
     sock.ev.on('creds.update', saveCreds);
     
