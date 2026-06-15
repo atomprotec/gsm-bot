@@ -6,7 +6,7 @@ const app = express();
 // Usamos el puerto que asigne Render o el 3000 por defecto
 const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot GSM Activo'));
-app.listen(PORT, () => console.log(`Servidor iniciado en puerto ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Servidor iniciado en puerto ${PORT}`));
 
 // Definimos el número del admin usando la variable de entorno
 const ADMIN_NUMBER = process.env.ADMIN_NUMBER; 
