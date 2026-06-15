@@ -1,33 +1,36 @@
-const { default: makeWASocket, useMultiFileAuthState, makeCacheableSignalKeyStore } = require('@whiskeysockets/baileys');
-const express = require('express');
-const cors = require('cors');
-const fs = require('fs');
+const { makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const qrcode = require('qrcode-terminal'); // Asegurate de tener esta línea
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+async function startBot() {
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
 
-let sock;
-let ultimoQR = "";
+    const sock = makeWASocket({
+        auth: state,
+        printQRInTerminal: false // Ya no usamos esto
+    });
 
-async function connectToWhatsApp() {
-    // Seguridad: Asegurar que la carpeta existe para evitar el error 'undefined'
-    const authFolder = 'auth_info_baileys';
-    if (!fs.existsSync(authFolder)){
-        fs.mkdirSync(authFolder);
-    }
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect, qr } = update;
+        
+        if (qr) {
+            // AQUÍ ES DONDE APARECE EL QR
+            qrcode.generate(qr, { small: true });
+        }
+        
+        if (connection === 'close') {
+            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== 401;
+            if (shouldReconnect) {
+                startBot();
+            }
+        } else if (connection === 'open') {
+            console.log('✅ ¡Conectado a WhatsApp correctamente!');
+        }
+    });
 
-    const { state, saveCreds } = await useMultiFileAuthState(authFolder);
-    
-sock = makeWASocket({
-    auth: {
-        creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, console),
-    },
-    // CAMBIAMOS ESTO:
-    printQRInTerminal: true, 
-    browser: ["GSM-Bot", "Chrome", "1.0"]
-});
+    sock.ev.on('creds.update', saveCreds);
+}
+
+startBot();
 
     sock.ev.on('creds.update', saveCreds);
     
@@ -42,7 +45,6 @@ sock = makeWASocket({
             console.log('✅ ¡CONECTADO!');
         }
     });
-}
 
 app.get('/', (req, res) => {
     if (ultimoQR === "CONECTADO") return res.send("<h1>✅ BOT CONECTADO</h1>");
